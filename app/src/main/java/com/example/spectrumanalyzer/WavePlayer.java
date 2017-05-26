@@ -11,7 +11,7 @@ import android.util.Log;
 
 public class WavePlayer {
     private static final String TAG = "WavePlayer";
-    private static final int SAMPLERATE= 44100;
+    private static final int SAMPLE_RATE = 44100;
     private AudioTrack mAudioTrack;
     private WaveGen mWaveGen;
     private int mFreq;
@@ -26,7 +26,7 @@ public class WavePlayer {
 
         // 必要となるバッファサイズを計算する
         bufferSize = AudioTrack.getMinBufferSize(
-                SAMPLERATE,
+                SAMPLE_RATE,
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT
         );
@@ -34,7 +34,7 @@ public class WavePlayer {
         // AudioTrackを初期化する
         mAudioTrack = new AudioTrack(
                 AudioManager.STREAM_MUSIC,
-                SAMPLERATE,
+                SAMPLE_RATE,
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
                 bufferSize,
@@ -45,7 +45,7 @@ public class WavePlayer {
         mSamples = bufferSize / 4;
 
         // WaveGenを初期化する
-        mWaveGen = new WaveGen(mFreq, SAMPLERATE, mSamples);
+        mWaveGen = new WaveGen(mFreq, SAMPLE_RATE, mSamples);
 
         // AudioTrack再生の設定をする
         mAudioTrack.setPlaybackPositionUpdateListener(

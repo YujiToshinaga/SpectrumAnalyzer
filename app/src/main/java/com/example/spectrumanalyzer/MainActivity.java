@@ -9,8 +9,6 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -19,12 +17,16 @@ import android.widget.ToggleButton;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int RECORD_AUDIO_PERMISSION = 0x1;
+    private SpectrumView mSpectrumView;
+    private ToggleButton mToggleButtonAnalyze;
     private ToggleButton mToggleButtonPlay;
     private EditText mEditTextFreq1;
     private AudioManager mAudioManager;
+    private SpectrumRecorder mSpectrumRecorder;
     private WavePlayer mWavePlayer;
     private int mSaveVolume;
     private int mVolume;
+    private int mSampleRate;
     private int mFreq1;
 
     @Override
@@ -34,17 +36,36 @@ public class MainActivity extends AppCompatActivity {
 
         permitAudioRecord();
 
-        // 描画用変数を初期化
+        // 描画用変数を初期化する
+        mSpectrumView = (SpectrumView)findViewById(R.id.spectrumView);
+        mToggleButtonAnalyze = (ToggleButton)findViewById(R.id.toggleButtonAnalyze);
         mToggleButtonPlay = (ToggleButton)findViewById(R.id.toggleButtonPlay);
         mEditTextFreq1 = (EditText)findViewById(R.id.editTextFreq1);
 
+        // インスタンスと変数を初期化する
         mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+        mSpectrumRecorder = new SpectrumRecorder();
         mWavePlayer = new WavePlayer(0);
         mSaveVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         mVolume = mSaveVolume;
+        mSampleRate = mSpectrumRecorder.getSampleRate();
         mFreq1 = 0;
 
-        // -------- Play Music --------
+        // -------- Analyze --------
+        mToggleButtonAnalyze.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    Log.d(TAG, "Analyze");
+                    mSpectrumRecorder.start();
+                } else {
+                    Log.d(TAG, "Stop");
+                    mSpectrumRecorder.stop();
+                }
+            }
+        });
+
+        // -------- Play --------
         mToggleButtonPlay.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -60,6 +81,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        mSpectrumRecorder.setRecordPositionUpdateListener(new SpectrumRecorder.OnRecordPositionUpdateListener() {
+            @Override
+            public void onPeriodicNotification(double[] spectrum, int spectrumNum) {
+                mSpectrumView.setSpectrum(spectrum, spectrumNum, mSampleRate);
+                mSpectrumView.update();
+            }
+        });
     }
 
     @Override
