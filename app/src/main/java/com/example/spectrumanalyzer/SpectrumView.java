@@ -238,7 +238,7 @@ public class SpectrumView extends View {
     private void calcScale() {
         // aaa
         for (int i = 0; i < mScaleXNum; i++) {
-            mScaleX[i] = mGraphLeft + Math.log10(Math.pow(10, i + mFreqLogMin)) * mFreqLogUnitWidth - mFreqLogOffset;
+            mScaleX[i] = mGraphLeft + Math.log10(Math.pow(10, i + mFreqLogMin + 1)) * mFreqLogUnitWidth - mFreqLogOffset;
         }
 
         // aaa
@@ -302,7 +302,7 @@ public class SpectrumView extends View {
     // 目盛り表示の描画
     private void drawScale(Canvas canvas) {
         for (int i = 0; i < mScaleXNum; i++) {
-            canvas.drawText("0dB", (float)mScaleX[i], mGraphBottom + 10, mScalePaint);
+            canvas.drawText("0dB", (float)mScaleX[i], mGraphBottom + 20, mScalePaint);
         }
 
         for (int i = 0; i < mScaleYNum; i++) {

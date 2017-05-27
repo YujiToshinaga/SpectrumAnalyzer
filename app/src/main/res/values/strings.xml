@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">SpectrumAnalyzer</string>
+    <string-array name="samplesArray">
+        <item>2048</item>
+        <item>4096</item>
+        <item>8192</item>
+    </string-array>
 </resources>

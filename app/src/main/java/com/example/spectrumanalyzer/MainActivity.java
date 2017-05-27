@@ -11,14 +11,17 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int RECORD_AUDIO_PERMISSION = 0x1;
+    private static final int SAMPLE_RATE = 44100;
     private SpectrumView mSpectrumView;
     private ToggleButton mToggleButtonAnalyze;
+    private Spinner mSpinnerSamples;
     private ToggleButton mToggleButtonPlay;
     private EditText mEditTextFreq1;
     private AudioManager mAudioManager;
@@ -26,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private WavePlayer mWavePlayer;
     private int mSaveVolume;
     private int mVolume;
-    private int mSampleRate;
+    private int mSamples;
     private int mFreq1;
 
     @Override
@@ -39,16 +42,17 @@ public class MainActivity extends AppCompatActivity {
         // 描画用変数を初期化する
         mSpectrumView = (SpectrumView)findViewById(R.id.spectrumView);
         mToggleButtonAnalyze = (ToggleButton)findViewById(R.id.toggleButtonAnalyze);
+        mSpinnerSamples = (Spinner)findViewById(R.id.spinnerSamples);
         mToggleButtonPlay = (ToggleButton)findViewById(R.id.toggleButtonPlay);
         mEditTextFreq1 = (EditText)findViewById(R.id.editTextFreq1);
 
         // インスタンスと変数を初期化する
         mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-        mSpectrumRecorder = new SpectrumRecorder();
-        mWavePlayer = new WavePlayer(0);
+        mSpectrumRecorder = new SpectrumRecorder(SAMPLE_RATE);
+        mWavePlayer = new WavePlayer(SAMPLE_RATE);
         mSaveVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         mVolume = mSaveVolume;
-        mSampleRate = mSpectrumRecorder.getSampleRate();
+        mSamples = 0;
         mFreq1 = 0;
 
         // -------- Analyze --------
@@ -57,7 +61,14 @@ public class MainActivity extends AppCompatActivity {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
                     Log.d(TAG, "Analyze");
-                    mSpectrumRecorder.start();
+                    int idx = mSpinnerSamples.getSelectedItemPosition();
+                    switch (idx) {
+                        case 0: mSamples = 2048; break;
+                        case 1: mSamples = 4096; break;
+                        case 2: mSamples = 8192; break;
+                        default: mSamples = 2048; break;
+                    }
+                    mSpectrumRecorder.start(mSamples);
                 } else {
                     Log.d(TAG, "Stop");
                     mSpectrumRecorder.stop();
@@ -84,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         mSpectrumRecorder.setRecordPositionUpdateListener(new SpectrumRecorder.OnRecordPositionUpdateListener() {
             @Override
             public void onPeriodicNotification(double[] spectrum, int spectrumNum) {
-                mSpectrumView.setSpectrum(spectrum, spectrumNum, mSampleRate);
+                mSpectrumView.setSpectrum(spectrum, spectrumNum, SAMPLE_RATE);
                 mSpectrumView.update();
             }
         });
