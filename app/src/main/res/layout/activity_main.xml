@@ -22,17 +22,17 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
+                android:layout_height="240dp"
                 android:gravity="center_vertical">
                 <com.example.spectrumanalyzer.SpectrumView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="#cccccc"
-                    android:paddingBottom="40dp"
-                    android:paddingLeft="20dp"
+                    android:background="#000000"
                     android:id="@+id/spectrumView"
-                    app:exampleColor="#33b5e5"
-                    app:exampleString="Hello, SpectrumView" />
+                    app:gridColor="#ff0000"
+                    app:scaleColor="#00ff00"
+                    app:spectrumColor="#00ff00"
+                    app:resultColor="#00ff00" />
             </LinearLayout>
 
             <LinearLayout
