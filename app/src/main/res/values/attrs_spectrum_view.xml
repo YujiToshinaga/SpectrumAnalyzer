@@ -1,7 +1,8 @@
 <resources>
     <declare-styleable name="SpectrumView">
-        <attr name="exampleString" format="string" />
-        <attr name="exampleDimension" format="dimension" />
-        <attr name="exampleColor" format="color" />
+        <attr name="gridColor" format="color" />
+        <attr name="scaleColor" format="color" />
+        <attr name="spectrumColor" format="color" />
+        <attr name="resultColor" format="color" />
     </declare-styleable>
 </resources>
