@@ -11,52 +11,58 @@ import android.util.Log;
 
 public class SpectrumRecorder {
     private static final String TAG = "SpectrumRecorder";
-    private static final int SAMPLE_RATE = 44100;
     private static final int BIT_PER_SAMPLE = 16;
     private SpectrumRecorder.OnRecordPositionUpdateListener mRecordPositionUpdateListener;
     private AudioRecord mAudioRecord;
+    private int mSampleRate;
     private int mSamples;
     private int mFreqNum;
     private double[] mSpectrum;
 
-    SpectrumRecorder () {
-        int bufferSize;
-
+    SpectrumRecorder(int sampleRate) {
         Log.d(TAG, "SpectrumRecorder");
-
         mRecordPositionUpdateListener = null;
         mAudioRecord = null;
+        mSampleRate = sampleRate;
         mSamples = 0;
+        mFreqNum = 0;
+        mSpectrum = null;
+    }
 
-        // 必要となるバッファサイズを計算する
-        bufferSize = AudioRecord.getMinBufferSize(
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT
-        );
-        Log.d(TAG, "bufferSize: " + bufferSize);
-        bufferSize = 4096;
+    public interface OnRecordPositionUpdateListener {
+        public void onPeriodicNotification(double[] spectrum, int spectrumNum);
+    }
 
-        // AudioRecordを初期化する
-        mAudioRecord = new AudioRecord(
-                MediaRecorder.AudioSource.MIC,
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT,
-                bufferSize
-        );
+    public void setRecordPositionUpdateListener(SpectrumRecorder.OnRecordPositionUpdateListener listener) {
+        mRecordPositionUpdateListener = listener;
+    }
 
-        // 一度に読み込むサンプル数を計算する
-        mSamples = bufferSize / 2;  // 16bit = 2byteだから
+    public void start(int samples) {
+        int minBufferSize;
 
-        // FFTで得られるデータ数を計算する
+        mSamples = samples;
         mFreqNum = mSamples / 2;
-
-        // メモリを確保する
         mSpectrum = new double[mFreqNum];
         for (int i = 0; i < mFreqNum; i++) {
             mSpectrum[i] = 0.0;
         }
+
+        // 必要となるバッファサイズを計算する
+        minBufferSize = AudioRecord.getMinBufferSize(
+                mSampleRate,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+        );
+        Log.d(TAG, "bufferSize: " + minBufferSize);
+
+        // AudioRecordを初期化する
+        mAudioRecord = new AudioRecord(
+                MediaRecorder.AudioSource.MIC,
+                mSampleRate,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                mSamples * 2                        // 16bit = 2byteだから
+        );
 
         // AudioRecord録音の設定をする
         mAudioRecord.setRecordPositionUpdateListener(new AudioRecord.OnRecordPositionUpdateListener() {
@@ -91,7 +97,7 @@ public class SpectrumRecorder {
                 for (int i = 0; i < mFreqNum; i++) {
                     mSpectrum[i] = (Math.sqrt(
                             Math.pow(fftData[i * 2] / mFreqNum, 2)
-                            + Math.pow(fftData[i * 2 + 1] / mFreqNum, 2)
+                                    + Math.pow(fftData[i * 2 + 1] / mFreqNum, 2)
                     ) / Math.pow(2, BIT_PER_SAMPLE)) / Math.sqrt(2);
 
 //                    if (i == 40) {
@@ -114,28 +120,12 @@ public class SpectrumRecorder {
 
         // 通知間隔を受信周期にする
         mAudioRecord.setPositionNotificationPeriod(mSamples);
-    }
-
-    public interface OnRecordPositionUpdateListener {
-        public void onPeriodicNotification(double[] spectrum, int spectrumNum);
-    }
-
-    public void setRecordPositionUpdateListener(SpectrumRecorder.OnRecordPositionUpdateListener listener) {
-        mRecordPositionUpdateListener = listener;
-    }
-
-    public void start(){
-        // エラー処理
-        if (mAudioRecord == null) {
-            Log.d(TAG, "start : not initialized");
-            return;
-        }
 
         // 録音する
         mAudioRecord.startRecording();
     }
 
-    public void stop(){
+    public void stop() {
         // エラー処理
         if (mAudioRecord == null) {
             Log.d(TAG, "stop : not initialized");
@@ -144,9 +134,11 @@ public class SpectrumRecorder {
 
         // 停止する
         mAudioRecord.stop();
-    }
 
-    public int getSampleRate(){
-        return SAMPLE_RATE;
+        // 変数を初期化する
+        mAudioRecord = null;
+        mSamples = 0;
+        mFreqNum = 0;
+        mSpectrum = null;
     }
 }
