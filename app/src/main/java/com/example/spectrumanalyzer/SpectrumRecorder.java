@@ -16,35 +16,34 @@ public class SpectrumRecorder {
     private AudioRecord mAudioRecord;
     private int mSampleRate;
     private int mSamples;
-    private int mFreqNum;
-    private double[] mSpectrum;
+    private double[] mAmp;
+    private int mAmpNum;
 
-    SpectrumRecorder(int sampleRate) {
+    SpectrumRecorder(int sampleRate, int samples) {
         Log.d(TAG, "SpectrumRecorder");
         mRecordPositionUpdateListener = null;
         mAudioRecord = null;
         mSampleRate = sampleRate;
-        mSamples = 0;
-        mFreqNum = 0;
-        mSpectrum = null;
+        mSamples = samples;
+        mAmp = null;
+        mAmpNum = 0;
     }
 
     public interface OnRecordPositionUpdateListener {
-        public void onPeriodicNotification(double[] spectrum, int spectrumNum);
+        public void onPeriodicNotification(double[] amp, int ampNum);
     }
 
     public void setRecordPositionUpdateListener(SpectrumRecorder.OnRecordPositionUpdateListener listener) {
         mRecordPositionUpdateListener = listener;
     }
 
-    public void start(int samples) {
+    public void start() {
         int minBufferSize;
 
-        mSamples = samples;
-        mFreqNum = mSamples / 2;
-        mSpectrum = new double[mFreqNum];
-        for (int i = 0; i < mFreqNum; i++) {
-            mSpectrum[i] = 0.0;
+        mAmpNum = mSamples / 2;
+        mAmp = new double[mAmpNum];
+        for (int i = 0; i < mAmpNum; i++) {
+            mAmp[i] = 0.0;
         }
 
         // 必要となるバッファサイズを計算する
@@ -94,23 +93,23 @@ public class SpectrumRecorder {
                 fft.rdft(1, fftData);
 
                 // 正規化された振幅を計算する
-                for (int i = 0; i < mFreqNum; i++) {
-                    mSpectrum[i] = (Math.sqrt(
-                            Math.pow(fftData[i * 2] / mFreqNum, 2)
-                                    + Math.pow(fftData[i * 2 + 1] / mFreqNum, 2)
+                for (int i = 0; i < mAmpNum; i++) {
+                    mAmp[i] = (Math.sqrt(
+                            Math.pow(fftData[i * 2] / mAmpNum, 2)
+                                    + Math.pow(fftData[i * 2 + 1] / mAmpNum, 2)
                     ) / Math.pow(2, BIT_PER_SAMPLE)) / Math.sqrt(2);
 
 //                    if (i == 40) {
-//                        Log.d(TAG, "freq " + (((double)44100 / 2) / mFreqNum) * i);
-//                        Log.d(TAG, "mSpectrum " + mSpectrum[i]);
+//                        Log.d(TAG, "freq " + (((double)44100 / 2) / mAmpNum) * i);
+//                        Log.d(TAG, "mAmp " + mAmp[i]);
 //                        Log.d(TAG, "fftData " + fftData[i * 2]);
-//                        Log.d(TAG, "fftDataNorm " + fftData[i * 2] / mFreqNum);
-//                        Log.d(TAG, "fftDataNorm " + fftData[i * 2 + 1] / mFreqNum);
+//                        Log.d(TAG, "fftDataNorm " + fftData[i * 2] / mAmpNum);
+//                        Log.d(TAG, "fftDataNorm " + fftData[i * 2 + 1] / mAmpNum);
 //                    }
                 }
 
                 // コールバック関数を呼び出す
-                mRecordPositionUpdateListener.onPeriodicNotification(mSpectrum, mFreqNum);
+                mRecordPositionUpdateListener.onPeriodicNotification(mAmp, mAmpNum);
             }
 
             @Override
@@ -137,8 +136,15 @@ public class SpectrumRecorder {
 
         // 変数を初期化する
         mAudioRecord = null;
-        mSamples = 0;
-        mFreqNum = 0;
-        mSpectrum = null;
+        mAmpNum = 0;
+        mAmp = null;
+    }
+
+    public void setSamples(int samples) {
+        mSamples = samples;
+    }
+
+    public int getSamples() {
+        return mSamples;
     }
 }

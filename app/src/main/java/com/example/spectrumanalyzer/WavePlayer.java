@@ -43,7 +43,7 @@ public class WavePlayer {
         );
 
         // 一度に書き込むサンプル数を計算する
-        mSamples = bufferSize / 4;
+        mSamples = bufferSize / 4; // 16bit=2byteで割って、さらに1/2ずつバッファ書き込みする
 
         // WaveGenを初期化する
         mWaveGen = new WaveGen(mFreq, mSampleRate, mSamples);

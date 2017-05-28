@@ -48,12 +48,12 @@ public class MainActivity extends AppCompatActivity {
 
         // インスタンスと変数を初期化する
         mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-        mSpectrumRecorder = new SpectrumRecorder(SAMPLE_RATE);
+        mSpectrumRecorder = new SpectrumRecorder(SAMPLE_RATE, 2048);
         mWavePlayer = new WavePlayer(SAMPLE_RATE);
         mSaveVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         mVolume = mSaveVolume;
-        mSamples = 0;
-        mFreq1 = 0;
+        mSamples = 2048;
+        mFreq1 = 1000;
 
         // -------- Analyze --------
         mToggleButtonAnalyze.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -68,7 +68,8 @@ public class MainActivity extends AppCompatActivity {
                         case 2: mSamples = 8192; break;
                         default: mSamples = 2048; break;
                     }
-                    mSpectrumRecorder.start(mSamples);
+                    mSpectrumRecorder.setSamples(mSamples);
+                    mSpectrumRecorder.start();
                 } else {
                     Log.d(TAG, "Stop");
                     mSpectrumRecorder.stop();
@@ -94,8 +95,8 @@ public class MainActivity extends AppCompatActivity {
 
         mSpectrumRecorder.setRecordPositionUpdateListener(new SpectrumRecorder.OnRecordPositionUpdateListener() {
             @Override
-            public void onPeriodicNotification(double[] spectrum, int spectrumNum) {
-                mSpectrumView.setSpectrum(spectrum, spectrumNum, SAMPLE_RATE);
+            public void onPeriodicNotification(double[] amp, int ampNum) {
+                mSpectrumView.setAmp(amp, ampNum, SAMPLE_RATE);
                 mSpectrumView.update();
             }
         });
