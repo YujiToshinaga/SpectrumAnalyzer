@@ -15,10 +15,10 @@ import android.view.View;
 public class SpectrumView extends View {
     private static final String TAG = "SpectrumView";
     private static int MAX_SPECTRUM_NUM = 8192;
-    private static double FREQ_HZ_MIN = 20;          // 表示する最小周波数
-    private static double FREQ_HZ_MAX = 22050;       // 表示する最大周波数
-    private static double AMP_DB_MIN = (-120);       // 表示する最小デシベル数
-    private static double AMP_DB_GRID_UNIT = 20;     // 表示するデシベル数のグリッド間隔
+    private static int FREQ_HZ_MIN = 20;          // 表示する最小周波数
+    private static int FREQ_HZ_MAX = 22050;       // 表示する最大周波数
+    private static int AMP_DB_MIN = (-120);       // 表示する最小デシベル数
+    private static int AMP_DB_GRID_UNIT = 20;     // 表示するデシベル数のグリッド間隔
     private static int GRAPH_PAD_LEFT = 60;
     private static int GRAPH_PAD_RIGHT = 10;
     private static int GRAPH_PAD_TOP = 20;
@@ -27,26 +27,18 @@ public class SpectrumView extends View {
     private int mScaleColor = Color.GREEN;
     private int mSpectrumColor = Color.GREEN;
     private int mResultColor = Color.GREEN;
-    private Paint mGridPaint;
-    private Paint mScalePaint;
     private Paint mSpectrumPaint;
-    private Paint mResultPaint;
     private int mSampleRate;
-    private double[] mSpectrum;
-    private int mSpectrumNum;
-    private int mFreqLogMin;
-    private int mFreqLogMax;
-    private int mGridXNum;
-    private int mGridYNum;
-    private int mScaleXNum;
-    private int mScaleYNum;
-    private double[] mGridX;
-    private double[] mGridY;
-    private double[] mScaleX;
-    private double[] mScaleY;
-    private double[] mSpectrumX;
-    private double[] mSpectrumY;
-    private double mPeakFreq;
+    private double[] mAmp;
+    private int mAmpNum;
+    private int mFreqHzLogMin;
+    private int mFreqHzLogMax;
+    private Lines mGridX;
+    private Lines mGridY;
+    private Texts mScaleX;
+    private Texts mScaleY;
+    private Lines mSpectrum;
+    private Texts mInfo;
     private int mViewWidth;
     private int mViewHeight;
     private int mGraphWidth;
@@ -55,8 +47,8 @@ public class SpectrumView extends View {
     private int mGraphRight;
     private int mGraphTop;
     private int mGraphBottom;
-    private double mFreqLogUnitWidth;
-    private double mFreqLogOffset;
+    private double mFreqHzLogUnitWidth;
+    private double mFreqHzLogOffset;
     private double mAmpDbUnitHeight;
 
     public SpectrumView(Context context) {
@@ -83,80 +75,35 @@ public class SpectrumView extends View {
         mGridColor = a.getColor(R.styleable.SpectrumView_gridColor, mGridColor);
         mScaleColor = a.getColor(R.styleable.SpectrumView_scaleColor, mScaleColor);
         mSpectrumColor = a.getColor(R.styleable.SpectrumView_spectrumColor, mSpectrumColor);
-        mResultColor = a.getColor(R.styleable.SpectrumView_spectrumColor, mSpectrumColor);
+        mResultColor = a.getColor(R.styleable.SpectrumView_spectrumColor, mResultColor);
         a.recycle();
 
-        mGridPaint = new Paint();
-        mGridPaint.setStrokeWidth(1f);
-        mGridPaint.setStyle(Paint.Style.STROKE);
-        mGridPaint.setAntiAlias(true);
-        mGridPaint.setColor(mGridColor);
-        mScalePaint = new Paint();
-        mScalePaint.setTextSize(20);
-        mScalePaint.setAntiAlias(true);
-        mScalePaint.setColor(mScaleColor);
         mSpectrumPaint = new Paint();
-        mSpectrumPaint.setStrokeWidth(1f);
+        mSpectrumPaint.setTextSize(20);
+//        mSpectrumPaint.setStrokeWidth(1f);
         mSpectrumPaint.setAntiAlias(true);
-        mSpectrumPaint.setColor(mSpectrumColor);
-        mResultPaint = new Paint();
-        mResultPaint.setTextSize(20);
-        mResultPaint.setAntiAlias(true);
-        mResultPaint.setColor(mResultColor);
+
         mSampleRate = 0;
-        mSpectrum = null;
-        mSpectrumNum = 0;
+        mAmp = null;
+        mAmpNum = 0;
 
         // 周波数の対数の範囲を計算する
-        mFreqLogMin = (int)Math.floor(Math.log10(FREQ_HZ_MIN));
-        mFreqLogMax = (int)Math.ceil(Math.log10(FREQ_HZ_MAX));
-        Log.d(TAG, "mFreqLogMin: " + mFreqLogMin); // 1
-        Log.d(TAG, "mFreqLogMax: " + mFreqLogMax); // 5
+        mFreqHzLogMin = (int)Math.floor(Math.log10(FREQ_HZ_MIN));
+        mFreqHzLogMax = (int)Math.ceil(Math.log10(FREQ_HZ_MAX));
+        Log.d(TAG, "mFreqHzLogMin: " + mFreqHzLogMin); // 1
+        Log.d(TAG, "mFreqHzLogMax: " + mFreqHzLogMax); // 5
 
-        // グリッド線を初期化する
-        mGridXNum = 9 - (int)(FREQ_HZ_MIN / Math.pow(10, mFreqLogMin));
-        mGridXNum += 9 * (mFreqLogMax - mFreqLogMin - 2);
-        mGridXNum += (int)(FREQ_HZ_MAX / Math.pow(10, mFreqLogMax - 1));
-        mGridXNum++;
-        mGridX = new double[mGridXNum];
-        for (int i = 0; i < mGridXNum; i++) {
-            mGridX[i] = 0;
-        }
-        mGridYNum = (int)(Math.ceil((-AMP_DB_MIN) / AMP_DB_GRID_UNIT)) + 1;
-        mGridY = new double[mGridYNum];
-        for (int i = 0; i < mGridYNum; i++) {
-            mGridY[i] = 0;
-        }
+        // 描画オブジェクトのメモリを確保する
+        mGridX = new Lines(100);
+        mGridY = new Lines(100);
+        mScaleX = new Texts(10);
+        mScaleY = new Texts(10);
+        mSpectrum = new Lines(MAX_SPECTRUM_NUM);
+        mInfo = new Texts(100);
 
-        // 目盛り表示を初期化する
-        mScaleXNum = mFreqLogMax - mFreqLogMin;
-        mScaleX = new double[mScaleXNum];
-        for (int i = 0; i < mScaleXNum; i++) {
-            mScaleX[i] = 0;
-        }
-        mScaleYNum = (int)(Math.ceil((-AMP_DB_MIN) / AMP_DB_GRID_UNIT)) + 1;
-        mScaleY = new double[mScaleYNum];
-        for (int i = 0; i < mScaleYNum; i++) {
-            mScaleY[i] = 0;
-        }
-        Log.d(TAG, "mScaleXNum: " + mScaleXNum); // 4
-
-        // スペクトラムデータを初期化する
-        mSpectrumX = new double[MAX_SPECTRUM_NUM];
-        mSpectrumY = new double[MAX_SPECTRUM_NUM];
-        for (int i = 0; i < MAX_SPECTRUM_NUM; i++) {
-            mSpectrumX[i] = 0;
-            mSpectrumY[i] = 0;
-        }
-
-        mPeakFreq = 0;
-
-        // 各種データを初期化する
-        calcParam();
+        // いったんグラフを計算して初期化する
         calcGrid();
-        calcScale();
         calcSpectrum();
-        calcResult();
     }
 
     @Override
@@ -165,20 +112,14 @@ public class SpectrumView extends View {
 
         // Viewのサイズが変わったら座標の再計算する
         if ((mViewWidth != getWidth()) || (mViewHeight != getHeight())) {
-            calcParam();
             calcGrid();
-            calcScale();
         }
 
         // スペクトラムの座標を計算する
         calcSpectrum();
-        calcResult();
 
         // 描画する
-        drawGrid(canvas);
-        drawScale(canvas);
-        drawSpectrum(canvas);
-        drawResult(canvas);
+        drawGraph(canvas);
     }
 
     @Override
@@ -186,14 +127,12 @@ public class SpectrumView extends View {
         super.onWindowFocusChanged(hasWindowFocus);
 
         // 各座標を計算する
-        calcParam();
         calcGrid();
-        calcScale();
         calcSpectrum();
     }
 
-    // パラメータの計算
-    private void calcParam() {
+    // グラフの計算
+    private void calcGrid() {
         // Viewのサイズを計算する
         mViewWidth = getWidth();
         mViewHeight = getHeight();
@@ -205,135 +144,142 @@ public class SpectrumView extends View {
         mGraphBottom = getBottom() - GRAPH_PAD_BOTTOM;
 
         // 周波数の対数の単位区間幅を計算する
-        mFreqLogUnitWidth = (double)mGraphWidth / (Math.log10(FREQ_HZ_MAX) - Math.log10(FREQ_HZ_MIN));
+        mFreqHzLogUnitWidth = (double)mGraphWidth / (Math.log10(FREQ_HZ_MAX) - Math.log10(FREQ_HZ_MIN));
 
         // 周波数の対数のオフセットを計算する
-        mFreqLogOffset = Math.log10(FREQ_HZ_MIN) * mFreqLogUnitWidth;
+        mFreqHzLogOffset = Math.log10(FREQ_HZ_MIN) * mFreqHzLogUnitWidth;
 
         // 振幅の単位高さを計算する
         mAmpDbUnitHeight = (double)mGraphHeight / (-AMP_DB_MIN);
-    }
 
-    // グリッドの計算
-    private void calcGrid() {
-        // 縦のグリッド線の座標を計算する
-        int gridCountX = 0;
-        for (int i = mFreqLogMin; i < mFreqLogMax; i++) {
+        // 周波数のグリッドの座標を計算する
+        mGridX.init();
+        for (int i = mFreqHzLogMin; i < mFreqHzLogMax; i++) {
             for (int j = 1; j < 10; j++) {
-                double x = mGraphLeft + Math.log10(Math.pow(10, i) * j) * mFreqLogUnitWidth - mFreqLogOffset;
+                double x = mGraphLeft + Math.log10(Math.pow(10, i) * j) * mFreqHzLogUnitWidth - mFreqHzLogOffset;
                 if ((x >= mGraphLeft) && (x <= mGraphRight)) {
-                    mGridX[gridCountX] = x;
-                    gridCountX++;
+                    mGridX.add((float)x, (float)mGraphTop, (float)x, (float)mGraphBottom);
                 }
             }
         }
 
-        // 横のグリッド線の座標を計算する
-        for (int i = 0; i < mGridYNum; ++i) {
-            mGridY[i] = mGraphTop + mAmpDbUnitHeight * AMP_DB_GRID_UNIT * i;
-        }
-    }
-
-    // グリッドの計算
-    private void calcScale() {
-        // aaa
-        for (int i = 0; i < mScaleXNum; i++) {
-            mScaleX[i] = mGraphLeft + Math.log10(Math.pow(10, i + mFreqLogMin + 1)) * mFreqLogUnitWidth - mFreqLogOffset;
+        // 振幅のグリッドの座標を計算する
+        mGridY.init();
+        int gridYNum = (int)(Math.ceil((-AMP_DB_MIN) / AMP_DB_GRID_UNIT)) + 1;
+        for (int i = 0; i < gridYNum; ++i) {
+            double y = mGraphTop + mAmpDbUnitHeight * AMP_DB_GRID_UNIT * i;
+            if ((y >= mGraphTop) && (y <= mGraphBottom)) {
+                mGridY.add((float)mGraphLeft, (float)y, (float)mGraphRight, (float)y);
+            }
         }
 
-        // aaa
-        for (int i = 0; i < mScaleYNum; ++i) {
-            mScaleY[i] = mGraphTop + mAmpDbUnitHeight * AMP_DB_GRID_UNIT * i;
+        // 周波数の目盛り表示を計算する
+        mScaleX.init();
+        for (int i = mFreqHzLogMin; i < mFreqHzLogMax; i++) {
+            double x = mGraphLeft + Math.log10(Math.pow(10, i)) * mFreqHzLogUnitWidth - mFreqHzLogOffset;
+            if ((x >= mGraphLeft) && (x <= mGraphRight)) {
+                mScaleX.add((int)Math.pow(10, i) + "Hz", (float)x - 20, (float)mGraphBottom + 20);
+            }
+        }
+
+        // 振幅の目盛り表示を計算する
+        mScaleY.init();
+        int scaleYNum = (int)(Math.ceil((-AMP_DB_MIN) / AMP_DB_GRID_UNIT)) + 1;
+        for (int i = 0; i < scaleYNum; ++i) {
+            double y = mGraphTop + mAmpDbUnitHeight * AMP_DB_GRID_UNIT * i;
+            mScaleX.add((-AMP_DB_GRID_UNIT) * i + "dB", (float)10, (float)y + 5);
         }
     }
 
     // スペクトラムの計算
     private void calcSpectrum() {
-        // スペクトルデータがなかったら計算しない
-        if (mSpectrum == null) {
-            return;
-        }
+        // スペクトルを計算する
+        mSpectrum.init();
+        if (mAmp != null) {
+            Points spectrumPoint = new Points(MAX_SPECTRUM_NUM);
 
-        // スペクトラムの座標を計算する
-        for (int i = 0; i < mSpectrumNum; ++i) {
-            double freqHz = (((double) mSampleRate / 2) / mSpectrumNum) * i;
-            double x = mGraphLeft + (Math.log10(freqHz) * mFreqLogUnitWidth) - mFreqLogOffset;
-            double spectrumDb = 20.0 * Math.log10(mSpectrum[i]);
-            double y = mGraphTop + mGraphHeight - (((-AMP_DB_MIN) - (-spectrumDb)) * mAmpDbUnitHeight);
-            mSpectrumX[i] = x;
-            if ((y >= mGraphTop) && (y <= mGraphBottom)) { // TODO
-                mSpectrumY[i] = y;
-            } else {
-                mSpectrumY[i] = mGraphBottom;
+            // スペクトルの座標を計算する
+            for (int i = 0; i < mAmpNum; ++i) {
+                double freqHz = (((double) mSampleRate / 2) / mAmpNum) * i;
+                double x = mGraphLeft + (Math.log10(freqHz) * mFreqHzLogUnitWidth) - mFreqHzLogOffset;
+                double spectrumDb = 20.0 * Math.log10(mAmp[i]);
+                double y = mGraphTop + mGraphHeight - (((-AMP_DB_MIN) - (-spectrumDb)) * mAmpDbUnitHeight);
+                if ((x >= mGraphLeft) && (x <= mGraphRight)) {
+                    if ((y >= mGraphTop) && (y <= mGraphBottom)) { // TODO
+                        spectrumPoint.add((float)x, (float)y);
+                    } else {
+                        spectrumPoint.add((float)x, mGraphBottom);
+                    }
+                }
+            }
+
+            // 折れ線グラフの座標を計算する
+            for (int i = 0; i < spectrumPoint.getNum() - 1; i++) {
+                mSpectrum.add(spectrumPoint.getX(i), spectrumPoint.getY(i), spectrumPoint.getX(i + 1), spectrumPoint.getY(i + 1));
             }
         }
-    }
 
-    private void calcResult() {
+        // 値情報を計算する
+        mInfo.init();
         double peakAmp = 0;
         double peakFreq = 0;
-        for (int i = 0; i < mSpectrumNum; ++i) {
-            if (mSpectrum[i] > peakAmp) {
-                peakAmp = mSpectrum[i];
-                peakFreq = (((double) mSampleRate / 2) / mSpectrumNum) * i;
+        for (int i = 0; i < mAmpNum; ++i) {
+            if (mAmp[i] > peakAmp) {
+                peakAmp = mAmp[i];
+                peakFreq = (((double) mSampleRate / 2) / mAmpNum) * i;
             }
         }
-        mPeakFreq = peakFreq;
+        mInfo.add("Peak : " + peakFreq, mGraphLeft + 20, mGraphBottom + 40);
     }
 
-    // グリッドの描画
-    private void drawGrid(Canvas canvas) {
+    // グラフの描画
+    private void drawGraph(Canvas canvas) {
         // 枠を描画する
-        canvas.drawRect((float)mGraphLeft, (float)mGraphTop, (float)mGraphRight, (float)mGraphBottom, mGridPaint);
+        mSpectrumPaint.setColor(mGridColor);
+        canvas.drawLine(mGraphLeft, mGraphTop, mGraphRight, mGraphTop, mSpectrumPaint);
+        canvas.drawLine(mGraphLeft, mGraphTop, mGraphLeft, mGraphBottom, mSpectrumPaint);
+        canvas.drawLine(mGraphRight, mGraphTop, mGraphRight, mGraphBottom, mSpectrumPaint);
+        canvas.drawLine(mGraphLeft, mGraphBottom, mGraphRight, mGraphBottom, mSpectrumPaint);
 
-        // 縦線を描画する
-        for (int i = 0; i < mGridXNum; i++) {
-            double x = mGridX[i];
-            canvas.drawLine((float)x, (float)mGraphBottom, (float)x, (float)mGraphTop, mGridPaint);
+        // 周波数のグリッドを描画する
+        mSpectrumPaint.setColor(mGridColor);
+        for (int i = 0; i < mGridX.getNum(); i++) {
+            canvas.drawLine(mGridX.getX1(i), mGridX.getY1(i), mGridX.getX2(i), mGridX.getY2(i), mSpectrumPaint);
         }
 
-        // 横線を描画する
-        for (int i = 0; i < mGridYNum; i++) {
-            double y = mGridY[i];
-            canvas.drawLine((float)mGraphLeft, (float)y, (float)mGraphRight, (float)y, mGridPaint);
-        }
-    }
-
-    // 目盛り表示の描画
-    private void drawScale(Canvas canvas) {
-        for (int i = 0; i < mScaleXNum; i++) {
-            canvas.drawText("0dB", (float)mScaleX[i], mGraphBottom + 20, mScalePaint);
+        // 振幅のグリッドを描画する
+        mSpectrumPaint.setColor(mGridColor);
+        for (int i = 0; i < mGridY.getNum(); i++) {
+            canvas.drawLine(mGridY.getX1(i), mGridY.getY1(i), mGridY.getX2(i), mGridY.getY2(i), mSpectrumPaint);
         }
 
-        for (int i = 0; i < mScaleYNum; i++) {
-            canvas.drawText("0dB", (float)10, (float)mScaleY[i], mScalePaint);
+        // 周波数の目盛りを描画する
+        mSpectrumPaint.setColor(mScaleColor);
+        for (int i = 0; i < mScaleX.getNum(); i++) {
+            canvas.drawText(mScaleX.getText(i), mScaleX.getX(i), mScaleX.getY(i), mSpectrumPaint);
         }
-    }
 
-    // スペクトラムの描画
-    private void drawSpectrum(Canvas canvas) {
-        // スペクトルデータがなかったら描画しない
-        if (mSpectrum == null) {
-            return;
+        // 振幅のグリッドを描画する
+        mSpectrumPaint.setColor(mScaleColor);
+        for (int i = 0; i < mScaleY.getNum(); i++) {
+            canvas.drawText(mScaleY.getText(i), mScaleY.getX(i), mScaleY.getY(i), mSpectrumPaint);
         }
 
         // スペクトラムを描画する
-//        for(int i = 0; i < mSpectrumNum; ++i) {
-//            canvas.drawLine((float)mSpectrumX[i], (float)mGraphBottom, (float)mSpectrumX[i], (float)mSpectrumY[i], mSpectrumPaint);
-//        }
-        for(int i = 0; i < mSpectrumNum - 1; ++i) {
-            canvas.drawLine((float)mSpectrumX[i], (float)mSpectrumY[i], (float)mSpectrumX[i + 1], (float)mSpectrumY[i + 1], mSpectrumPaint);
+        mSpectrumPaint.setColor(mSpectrumColor);
+        for(int i = 0; i < mSpectrum.getNum(); ++i) {
+            canvas.drawLine(mSpectrum.getX1(i), mSpectrum.getY1(i), mSpectrum.getX2(i), mSpectrum.getY2(i), mSpectrumPaint);
         }
-    }
 
-    private void drawResult(Canvas canvas) {
-        canvas.drawText("Peak " + mPeakFreq + " Hz", (float)mGraphLeft + 20, mGraphBottom + 50, mResultPaint);
+        // 値情報を描画する
+        mSpectrumPaint.setColor(mResultColor);
+        canvas.drawText(mInfo.getText(0), mInfo.getX(0), mInfo.getY(0), mSpectrumPaint);
     }
 
     // スペクトラムデータ設定
-    public void setSpectrum(double[] spectrum, int spectrumNum, int sampleRate) {
-        mSpectrum = spectrum;
-        mSpectrumNum = spectrumNum;
+    public void setAmp(double[] spectrum, int spectrumNum, int sampleRate) {
+        mAmp = spectrum;
+        mAmpNum = spectrumNum;
         mSampleRate = sampleRate;
     }
 
