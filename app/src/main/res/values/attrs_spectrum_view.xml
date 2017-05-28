@@ -1,0 +1,8 @@
+<resources>
+    <declare-styleable name="SpectrumView">
+        <attr name="gridColor" format="color" />
+        <attr name="scaleColor" format="color" />
+        <attr name="spectrumColor" format="color" />
+        <attr name="resultColor" format="color" />
+    </declare-styleable>
+</resources>
